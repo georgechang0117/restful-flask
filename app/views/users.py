@@ -1,60 +1,60 @@
-from flask import Blueprint, request, jsonify
+from ..models.user import User
+import flask
+from flask import Blueprint, request, jsonify, render_template, abort, redirect, url_for
+from jinja2 import TemplateNotFound
+from .. import db
 
 users = Blueprint('users', __name__, template_folder='templates')
 
 @users.errorhandler(404)
 def page_not_found():
-  msg = {
-    'url': request.url,
-    'status': 404
-  }
-  return jsonify(msg), 404
-
-user_list = {
-  1: { "name": "Robin", "email": "robin@gmail.com" },
-  2: { "name": "george", "email": "george@gmail.com"},
-}
+  return abort(404)
 
 @users.route('/', methods=['GET'])
 def index():
-  return jsonify(user_list), 201
+  users = User.query.all()
+  return render_template('users/index.html', users = users)
 
-@users.route('/', methods=['POST'])
+@users.route('/new', methods=['GET'])
+def new():
+  user = User()
+  return render_template('users/new.html', users = user)
+
+@users.route('/create', methods=['POST'])
 def create():
-  if len(user_list) > 0:
-    last_key = user_list.keys()[-1]
-    key = last_key + 1
-  else:
-    key = 1
-  name = request.form["name"]
-  email = request.form["email"]
-  user_list[key] = {"name": name, "email": email}
-  return jsonify(user_list), 201
-
+  username = request.form['username']
+  email = request.form['email']
+  user = User(username, email)
+  db.session.add(user)
+  db.session.commit()
+  return redirect(url_for('users.index'))
 
 @users.route('/<int:id>', methods=['GET'])
-def get(id):
-  if id in user_list:
-    user = user_list[id]
-    return jsonify(user), 201
-  else:
-    return page_not_found()
+def show(id):
+  try:
+    user = User.query.filter_by(id=id).first()
+    return render_template('users/show.html', user = user)
+  except TemplateNotFound:
+    abort(404)
 
-@users.route('/<int:id>', methods=['PUT'])
-def put(id):
-  if id in user_list:
-    if "name" in request.form:
-      user_list[id]["name"] = request.form["name"]
-    if "email" in request.form:
-      user_list[id]["email"] = request.form["email"]
-    return jsonify(user_list[id]), 201
-  else:
-    return page_not_found()
+@users.route('/<int:id>/edit', methods=['GET'])
+def edit(id):
+  try:
+    user = User.query.filter_by(id=id).first()
+    return render_template('users/edit.html', user = user)
+  except TemplateNotFound:
+    abort(404)
 
-@users.route('/<int:id>', methods=['DELETE'])
+@users.route('/<int:id>', methods=['POST'])
+def update(id):
+  user = User.query.filter_by(id=id).first()
+  email = request.form['email']
+  user.email = email
+  return redirect(url_for('users.index'))
+
+@users.route('/<int:id>/delete', methods=['POST'])
 def destroy(id):
-  if id in user_list:
-    user_list.pop(id, None)
-    return jsonify(user_list), 201
-  else:
-    return page_not_found()
+  user = User.query.filter_by(id=id).first()
+  db.session.delete(user)
+  db.session.commit()
+  return redirect(url_for('users.index'))

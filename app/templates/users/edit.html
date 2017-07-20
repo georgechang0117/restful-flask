@@ -1,0 +1,9 @@
+{% extends "users/layout.html" %}
+{% block body %}
+  <p>{{ user.username }}</p>
+  <form action="{{ url_for('users.update', id = user.id) }}" method="POST">
+    <label for="email">email</label>
+    <input type="text" name="email" value="{{ user.email }}"><br>
+    <input type="submit" value="submit">
+  </form>
+{% endblock %}
