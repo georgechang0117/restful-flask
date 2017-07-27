@@ -1,28 +1,27 @@
 from ..models.user import User
 import flask
-from flask import Blueprint, request, Response, jsonify, render_template, abort, redirect, url_for
+from flask import Blueprint, request, Response, jsonify, render_template, abort, redirect, url_for, session
 from functools import wraps
 from jinja2 import TemplateNotFound
 from .. import db
 
 users = Blueprint('users', __name__, template_folder='templates')
 
-def check_auth(username, password):
-  return username == 'robin' and password == 'ischarming'
+def current_user():
+  if session.get('user_id'):
+    return User.query.filter_by(id=session['user_id']).first()
+  else:
+    return None
   
 def authenticate():
-    return Response(
-    'Could not verify your access level for that URL.\n'
-    'You have to login with proper credentials', 401,
-    {'WWW-Authenticate': 'Basic realm="Login Required"'})
+    return redirect(url_for('users.login'))
 
 def requires_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return authenticate()
-        return f(*args, **kwargs)
+      if current_user() == None:
+        return authenticate()
+      return f(*args, **kwargs)
     return decorated
 
 
@@ -79,3 +78,22 @@ def destroy(id):
   db.session.delete(user)
   db.session.commit()
   return redirect(url_for('users.index'))
+
+@users.route('/login', methods=['GET', 'POST'])
+def login():
+  if request.method == 'POST':
+    email = str(request.form['email'])
+    password = str(request.form['password'])
+    user = User.login(email, password)
+    if user != None:
+      session['user_id'] = user.id
+      return redirect(url_for('users.index'))
+    else:
+      return render_template('users/login.html') 
+  return render_template('users/login.html')
+
+@users.route('/logout', methods=['POST'])
+def logout():
+  session.pop('user_id', None)
+  return redirect(url_for('users.index'))
+  

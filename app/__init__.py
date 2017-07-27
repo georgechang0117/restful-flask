@@ -14,3 +14,5 @@ app.register_blueprint(users, url_prefix='/users')
 @app.route('/')
 def hello_world():
   return 'Hello, World!'
+
+app.secret_key = 'ce1b2d429a34d5371776785aac26002f654d7fe08bf387e082607571fc6f770bebd113cc5c821d216af5d5abfc01ae9f0c79c8db324c10aed9bfaad7fc7223fa'
